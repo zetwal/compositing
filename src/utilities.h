@@ -11,6 +11,8 @@ public:
     debugOutput(int rank, int threadId);
     ~debugOutput();
     
+    
+    void closeFile();
     void writeLog(std::string msg);
 };
 
