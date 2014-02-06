@@ -5,9 +5,11 @@ debugOutput::debugOutput(int rank, int threadId){
 }
 
 debugOutput::~debugOutput(){
-    myDebugfile.close();
 }
 
+void debugOutput::closeFile(){
+     myDebugfile.close();
+}
 
 void debugOutput::writeLog(std::string msg){
     myDebugfile << msg << std::endl;

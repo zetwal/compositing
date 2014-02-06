@@ -5,8 +5,11 @@
 
 void *hello(void *threadId){
     std::cout << "Hello from thread " << *((int*)&threadId) << " on proc with rank " << my_id << " of " << mpiWorldSize << std::endl;
+    
     debugOutput debugFile(my_id,(*((int*)&threadId)));
     debugFile.writeLog("Hello from thread " + numToStr( *((int*)&threadId) ) + " on proc with rank " + numToStr(my_id) + " of " + numToStr(mpiWorldSize));
+    debugFile.closeFile();
+    
     pthread_exit(NULL);
 }
 
@@ -14,7 +17,6 @@ int main(int argc, char *argv[]){
 
     // Parsing command line arguments for number of threads
     numThreads = strtol(argv[1], NULL, 10);
-        
 
     //
     // Initialize MPI
