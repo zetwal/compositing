@@ -21,7 +21,8 @@ PROGARGS="3"
 echo "Job started on `hostname` at `date`"
 
 # Execute the mpi job
-mpirun $PROG $PROGARGS
+#mpirun $PROG $PROGARGS
+mpirun -n 2 $PROG 3
 
 echo "Job Ended at `date`"
  

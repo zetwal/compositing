@@ -1,4 +1,4 @@
-//mpirun -n 2 ./threadmpi 2
+//mpirun -n 2 ./mpiThreads 3
 
 #include "main.h"
 
@@ -36,7 +36,7 @@ int main(int argc, char *argv[]){
     // Creating the threads
     for (int i=0; i<numThreads; i++){
         if ( pthread_create(&threadHandles[i], NULL, hello, (void *)(intptr_t)i) )
-            std::cout << "Could not create thread " << i << " on rank " << my_id << " of size " <<  mpiWorldSize << std::endl;
+            std::cout << "Could NOT create thread " << i << " on rank " << my_id << " of size " <<  mpiWorldSize << std::endl;
     }
     
     
