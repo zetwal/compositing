@@ -3,7 +3,7 @@
 rayCasting::rayCasting(){
 }
 
-rayCasting::~rayCasting(){
+rayCasting::~rayCasting()
 }
 
 

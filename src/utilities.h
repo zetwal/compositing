@@ -23,10 +23,6 @@ public:
 
 //
 // Others generic stuff
-std::string numToStr(int num){
-    std::ostringstream ss;
-    ss << num;
-    return ss.str();
-}
+std::string numToStr(int num);
 
 #endif

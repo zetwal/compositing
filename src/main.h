@@ -3,6 +3,7 @@
 //
 //********************************************************
 #include <stdlib.h>
+#include <stdint.h>
 
 #include <mpi.h>
 #include <pthread.h>

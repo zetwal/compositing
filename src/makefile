@@ -1,4 +1,4 @@
-SOURCES = main.cpp utilities.cpp rayCasting.cpp
+SOURCES = main.cpp utilities.cpp 
 OBJECTS = $(SOURCES:.cpp=.o)
 EXE = mpiThreads
 CC = mpic++
