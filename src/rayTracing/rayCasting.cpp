@@ -49,6 +49,8 @@ void intersect(){
 
 
 
+
+
 glm::vec4 rayCasting::colorScalar(glm::vec3 gradient, glm::vec3 dir, float scalar){
 	glm::vec4 srcColor;
 
@@ -73,15 +75,6 @@ glm::vec4 rayCasting::colorScalar(glm::vec3 gradient, glm::vec3 dir, float scala
 
 	return srcColor;
 }
-
-
-
-
-
-
-
-
-
 
 
 
@@ -158,4 +151,41 @@ int rayCasting::QueryTF(double scalarValue, glm::vec4 & color){
     color = (1.0-indexDiff)*colorLow + indexDiff*colorHigh;
 
     return 1;
+}
+
+
+//   _ _ _ _ _ _ _
+//  |      		 |
+//  |			 |
+//  |	a		 |
+//  |- - - x     |
+//  |      |     |
+//  |      |b    |
+//   - - - - - - -
+//
+//  a: dist from left
+//  b: dist from bottom
+//  c: distance from front (3D not shown)
+float rayCasting::trilinearInterpolate(float vals[8], float distRight, float distTop, float distBack){
+    float distLeft, distBottom, distFront;
+
+    distRight = 1.0 - distLeft;
+    distTop = 1.0 - distBottom;
+    distBack = 1.0 - distFront;
+
+    double val =    distRight	* distTop       * distBack * vals[0] + 
+                    distLeft	* distTop       * distBack * vals[1] +
+                    distRight   * distBottom    * distBack * vals[2] +
+                    distLeft    * distBottom	* distBack * vals[3] +
+
+                    distRight   * distTop       * distFront * vals[4] +
+                    distLeft    * distTop       * distFront * vals[5] +
+                    distRight   * distBottom    * distFront * vals[6] +
+                    distLeft    * distBottom	* distFront * vals[7];
+    return val;
+}
+
+void rayCasting::assignEight(float vals[8], int *index, float *scalarData){
+    for (int i=0 ; i<8 ; i++)
+        vals[i] = scalarData[index[i]];
 }
