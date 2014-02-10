@@ -8,6 +8,8 @@
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 
+typedef glm::vec4 vec;
+
 struct _RGBA{
     float R;
     float G;
@@ -43,7 +45,7 @@ class rayCasting{
 	int screenPos[2];
 
 	glm::vec4 getRay(int x, int y);
-	void intersect();
+	bool intersect(glm::vec4 &rayDir, float &prev_tmin, float &prev_tmax);
 
 	glm::vec4 colorScalar(glm::vec3 gradient, glm::vec3 dir, float scalar);
 

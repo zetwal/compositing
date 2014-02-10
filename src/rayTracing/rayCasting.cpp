@@ -43,8 +43,73 @@ glm::vec4 rayCasting::getRay(int x, int y){
 // should return wherther or not there is an intersection
 // + x,y,z into the cell of the intersection
 // + cell index of the intersection
-void intersect(){
 
+bool rayCasting::intersect(glm::vec4 &rayDir, float &prev_tmin, float &prev_tmax){
+
+    glm::vec3 dir, origin;
+
+    dir.x = rayDir.x / rayDir.w; 
+    dir.y = rayDir.y / rayDir.w; 
+    dir.z = rayDir.z / rayDir.w; 
+
+    origin.x = eye.x / eye.w; 
+    origin.y = eye.y / eye.w; 
+    origin.z = eye.z / eye.w; 
+
+    float tmin, tmax, tymin, tymax, tzmin, tzmax, temp;
+
+    float inv_x = 1.f / dir.x;
+    float inv_y = 1.f / dir.y;
+    float inv_z = 1.f / dir.z;
+
+    float tmin_x = (meshStartingPt.x - origin.x ) * inv_x;
+    float tmax_x = tmin_x + meshExtents.x * inv_x;
+
+    float tmin_y = (meshStartingPt.y - origin.y ) * inv_y;
+    float tmax_y = tmin_y + meshExtents.y * inv_y;
+
+    float tmin_z = (meshStartingPt.z - origin.z ) * inv_z;
+    float tmax_z = tmin_z + meshExtents.z * inv_z;
+
+    if(inv_x < 0){
+        tmin = tmax_x;
+        tmax = tmin_x;
+    }
+
+    if(inv_y < 0){
+        temp = tmin_y;
+        tmin_y = tmax_y;
+        tmax_y = temp;
+    }
+
+    if ( (tmin > tmax_y) || (tmin_y > tmax) )
+        return false;
+
+    if (tmin_y > tmin)
+        tmin = tmin_y;
+
+    if (tmax_y < tmax)
+        tmax = tmax_y;
+
+    if(inv_z < 0){
+        temp = tmin_z;
+        tmin_z = tmax_z;
+        tmax_z = temp;
+    }
+
+    if ( (tmin > tmax_z) || (tmin_z > tmax) )
+        return false;
+
+    if (tmin_z > tmin)
+        tmin = tmin_z;
+
+    if (tmax_z < tmax)
+        tmax = tmax_z;
+
+    if (tmin > prev_tmin) prev_tmin = tmin;
+    if (tmax < prev_tmax) prev_tmax = tmax;
+    
+    return true;
 }
 
 
