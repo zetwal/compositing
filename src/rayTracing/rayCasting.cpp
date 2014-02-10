@@ -28,6 +28,14 @@ glm::vec4 rayCasting::getRay(int x, int y){
 }
 
 
+
+// A ray-(axis aligned)box intersection -  to find if we intersect the data
+// 		Find the x,y,z coordinates of that intersection
+//		Figure out where does that x,y,z map to in the gridMesh -  gives us the cell data 
+//			how? we know the starting point and the size of each cell
+// should return wherther or not there is an intersection
+// + x,y,z into the cell of the intersection
+// + cell index of the intersection
 void intersect(){
 
 }
@@ -37,7 +45,9 @@ void intersect(){
 glm::vec4 rayCasting::colorScalar(glm::vec3 gradient, glm::vec3 dir, float scalar){
 	glm::vec4 srcColor;
 
-	
+	// query from tf function
+	//srcColor = 
+
 	if (lighting == true){
 		float normal_dot_light = glm::dot(gradient,dir);
 		normal_dot_light = std::max(0.0f, std::min((float)fabs(normal_dot_light),1.0f) );

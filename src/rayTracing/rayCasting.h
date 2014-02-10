@@ -22,7 +22,13 @@ class rayCasting{
 
 	glm::mat4 worldToView;
 
-	float *gridMesh;
+	float *gridMesh;	// 3D mesh of the 
+	glm::vec3 meshStartingPt;
+	glm::vec3 meshExtents;
+	glm::vec3 cellDimensions;
+	int logicalBounds[3];
+
+
 	float *scalarData;
 
 	float *renderedImage;
