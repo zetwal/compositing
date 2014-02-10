@@ -10,15 +10,15 @@ class rayCasting{
 	float *imgArray;
 	float avgZ;
 
-
-
 	// mesh dimensions
 	double	meshMin[3];
-    double	meshMax[3];			// 
+    double	meshMax[3];			
     int		logicalBounds[3];	// dimenasions x,y,z
+    float	*mesh;
+    double  *scalarData;
 
     // kdtree
-    double	currentPartitionExtents[6];  // minX, minY, minZ,    maxX, maxY,maxZ
+    double	currentPartitionExtents[6];  // minX, minY, minZ  -  maxX, maxY,maxZ
 
     // transformation matrix
 	double worldToViewMat[16];

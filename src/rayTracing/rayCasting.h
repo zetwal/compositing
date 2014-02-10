@@ -8,6 +8,12 @@
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 
+struct _RGBA{
+    float R;
+    float G;
+    float B;
+    float A;
+};
 
 class rayCasting{
 	glm::vec4 eye;
@@ -44,6 +50,13 @@ class rayCasting{
 	bool lighting;
 
 
+	// transfer fn
+	static const int tableEntries = 256;
+
+	glm::vec4 transferFn1D[tableEntries];	
+	float minScalar, maxScalar, rangeScalar;
+	int minTFIndex, maxTFIndex;
+
 public:
 	rayCasting();
 
@@ -62,7 +75,8 @@ public:
 
 	void castRay(int x, int y);
 
-
+	void setTransferFn(glm::vec4 inputArray[tableEntries], int te, double attenuation, float over);
+	int QueryTF(double scalarValue, glm::vec4 & color);
 
 
 	~rayCasting();

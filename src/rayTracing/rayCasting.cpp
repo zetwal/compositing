@@ -9,6 +9,13 @@ rayCasting::rayCasting(){
 rayCasting::~rayCasting(){
 }
 
+// x,y: pixel position on the screen
+void rayCasting::castRay(int x, int y){
+	glm::vec4 rayDir = getRay(x,y);
+	
+	//colorScalar
+}
+
 glm::vec4 rayCasting::getRay(int x, int y){
 	//
 	// Transform from screen space to eye space
@@ -68,9 +75,87 @@ glm::vec4 rayCasting::colorScalar(glm::vec3 gradient, glm::vec3 dir, float scala
 }
 
 
-// x,y: pixel position on the screen
-void rayCasting::castRay(int x, int y){
-	glm::vec4 rayDir = getRay(x,y);
-	
-	//colorScalar
+
+
+
+
+
+
+
+
+
+
+void
+rayCasting::setTransferFn(glm::vec4 inputArray[tableEntries], int te, double attenuation, float over)
+{
+    minTFIndex = maxTFIndex = -1;
+
+    if (attenuation < -1. || attenuation > 1.)
+        std::cout << "Bad attenuation value !!!" << std::endl;
+    
+
+    if (te != tableEntries)
+    	std::cout << "Wrong number of entries !!!" << std::endl;
+    
+  
+    for (int i=0; i<te; i++){
+        double bp = tan(1.570796327 * (0.5 - attenuation*0.49999));
+        double alpha = pow(inputArray[i].r / 255.f, (float)bp);
+        alpha = 1.0 - pow((1.0 - alpha), 1.0/over);
+
+        transferFn1D[i].r = inputArray[i].r*alpha;
+        transferFn1D[i].g = inputArray[i].g*alpha;
+        transferFn1D[i].b = inputArray[i].b*alpha;
+        transferFn1D[i].a = alpha;
+
+        if (minTFIndex == -1)
+            if (alpha > 0)
+                minTFIndex = i;
+            
+        if (alpha > 0)
+            maxTFIndex = i; 
+    }
+
+
+    if (minScalar != maxScalar)
+        rangeScalar = maxScalar - minScalar;
+    else
+        rangeScalar = 1.0f;
+}
+
+
+int rayCasting::QueryTF(double scalarValue, glm::vec4 & color){
+    if (scalarValue != scalarValue) // checking for NAN
+        return 0;
+
+    if (scalarValue <= minScalar){
+        int index = 0;
+        color = transferFn1D[index];
+
+        return 0;
+    }
+
+    if (scalarValue >= maxScalar){
+        int index = tableEntries-1;
+        color = transferFn1D[index];
+
+        return 0;
+    }
+
+    int indexLow, indexHigh;
+    glm::vec4 colorLow, colorHigh;
+    float indexPos, indexDiff;
+
+    indexPos  = (scalarValue-minScalar)/(maxScalar-minScalar) * tableEntries;    // multiplier = 1.0/(max-min) * tableEntries
+    indexLow  = (int)indexPos;
+    indexHigh = (int)(indexPos+1.0);
+
+    indexDiff = indexPos - indexLow;
+    
+    colorLow = transferFn1D[indexLow];
+    colorHigh = transferFn1D[indexHigh];
+
+    color = (1.0-indexDiff)*colorLow + indexDiff*colorHigh;
+
+    return 1;
 }

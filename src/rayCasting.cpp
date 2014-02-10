@@ -60,7 +60,6 @@ void rayCasting::rayCast(float *scalarData){
 	}
 	avgZ = avgZ/8.0;
 
-
 	for (int i=xMin; i<xMAx; i++)
 		for (int  j=yMin; j<yMax; j++){
 			
