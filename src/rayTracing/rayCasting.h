@@ -79,9 +79,29 @@ public:
 
 	void setTransferFn(glm::vec4 inputArray[tableEntries], int te, double attenuation, float over);
 	int QueryTF(double scalarValue, glm::vec4 & color);
+	void setMinScalar(float _minScalar){ minScalar = _minScalar; }
+	void setMaxScalar(float _maxScalar){ maxScalar = _maxScalar; }
 
+	float trilinearInterpolate(float vals[8], float distRight, float distTop, float distBack);
+	void assignEight(float vals[8], int *index, float *scalarData);
 
 	~rayCasting();
 };
 
 #endif
+
+
+// Algo:
+//
+// For each pixel on the screen  --> to be changed to find bounding box of the volume on the screen and then cast a ray for that
+// From the eye, cast a ray
+// check if there is intersection
+// if there is an intersection
+//		find the cell and the coordinates in the cell
+//		based on that find the cell centers around it and their value
+//		trilinear interpolation for value at intersection
+//		use the transfer fn to find an the color
+//		if lighting
+//			do phong shading
+//		return that value
+// 		compose that value in an image
