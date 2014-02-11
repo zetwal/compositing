@@ -38,7 +38,6 @@ class rayCasting{
 
 
 	float *scalarData;
-
 	float *renderedImage;
 
 	int screenDims[2];
@@ -47,7 +46,7 @@ class rayCasting{
 	glm::vec4 getRay(int x, int y);
 	bool intersect(glm::vec4 &rayDir, float &prev_tmin, float &prev_tmax);
 
-	glm::vec4 colorScalar(glm::vec3 gradient, glm::vec3 dir, float scalar);
+	glm::vec4 colorScalar(glm::vec3 gradient, glm::vec3 dir, glm::vec4 srcColor, glm::vec4 destColor);
 
 	bool lighting;
 
@@ -83,12 +82,14 @@ public:
 	void setMaxScalar(float _maxScalar){ maxScalar = _maxScalar; }
 
 	float trilinearInterpolate(float vals[8], float distRight, float distTop, float distBack);
-	void assignEight(float vals[8], int *index, float *scalarData);
+	void assignEight(float vals[8], int index[8]);
+
+	void getVolumePosition(int index[3], float offset[3], glm::vec4 pos);
 
 	~rayCasting();
 };
 
-int round(float x){
+int rnd(float x){
 	return ((int)x+0.5);
 }
 

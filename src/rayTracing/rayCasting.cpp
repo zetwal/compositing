@@ -9,26 +9,99 @@ rayCasting::rayCasting(){
 rayCasting::~rayCasting(){
 }
 
+void rayCasting::volumeRender(){
+
+}
+
+
+float rayCasting::world_to_screen(glm::vec4 world, int screenPos[2]){
+    glm::vec4 _view = glm::vec4(0.0);
+
+    // from world to view
+    _view = worldToView * _world;
+
+    // perspective divide -> normalized screen space: -1,-1,-1 to 1,1,1
+    if (_view.w != 0.0){
+        _view.x /= _view.w;
+        _view.y /= _view.w;
+        _view.z /= _view.w;
+    }
+
+    // viewport transform: screen coordinates
+    screenPos[0] = rnd(_view.x*(imgWidth/2.)  + (screenDims[0]/2.));     
+    screenPos[1] = rnd(_view.y*(imgHeight/2.) + (screenDims[1]/2.));
+
+    return view.z;
+}
+
+
+
 // x,y: pixel position on the screen
 void rayCasting::castRay(int x, int y){
 	glm::vec4 rayDir = getRay(x,y);
+    glm::vec4 destColor = glm::vec4(0.0);
 	
 	float tmin, tmax;
 	if (intersect(rayDir,tmin, tmax) == true){
 		glm::vec4 pos = eye + tmin*rayDir;
 
-		int index[3];
-		float offset[3];
+		int index[3], indices[8], indexLow[3], indexHigh[3];
+		float offset[3], distToCellCenter[3];
 		getVolumePosition(index,offset, pos);
 
-		int indices[8];
-		if (pos < 0.5){
-			indices[0] = indices[0]
-		}
+        indexLow[0] = index[0];     indexLow[1] = index[1];     indexLow[2] = index[2];
+        indexHigh[0] = index[0];    indexHigh[1] = index[1];    indexHigh[2] = index[2];
 
+		if (pos.x < 0.5){
+        	indexLow[0] = indexLow[0]-1;
+            distToCellCenter[0] = 0.5 + pos.x;
+		}else{
+            indexHigh[0] = indexHigh[0]+1;
+            distToCellCenter[0] = pos.x - 0.5;
+        }
+        
+        if (pos.y < 0.5){
+            indexLow[1] = indexLow[1]-1;
+            distToCellCenter[1] = 0.5 + pos.y;
+        }else{
+            indexHigh[1] = indexHigh[1]+1;
+            distToCellCenter[1] = pos.y - 0.5;
+        }
+
+        if (pos.z < 0.5){
+            indexLow[2] = indexLow[2]-1;
+            distToCellCenter[1] = 0.5 + pos.z;
+        }else{
+            indexHigh[2] = indexHigh[2]+1;
+            distToCellCenter[1] = pos.z - 0.5;
+        }
+        
+        // Compute indices
+        indices[0] = computeIndex(logicalBounds,indexLow[0] ,indexLow[1] ,indexLow[2]);
+        indices[1] = computeIndex(logicalBounds,indexHigh[0],indexLow[1] ,indexLow[2]);
+        indices[2] = computeIndex(logicalBounds,indexLow[0] ,indexHigh[1],indexLow[2]);
+        indices[3] = computeIndex(logicalBounds,indexHigh[0],indexHigh[1],indexLow[2]);
+
+        indices[4] = computeIndex(logicalBounds,indexLow[0] ,indexLow[1] ,indexHigh[2]);
+        indices[5] = computeIndex(logicalBounds,indexHigh[0],indexLow[1] ,indexHigh[2]);
+        indices[6] = computeIndex(logicalBounds,indexLow[0] ,indexHigh[1],indexHigh[2]);
+        indices[7] = computeIndex(logicalBounds,indexHigh[0],indexHigh[1],indexHigh[2]);
+
+        // Get the scalar values of the 8 surrounding cells
+        float scalarValues[8];
+        assignEight(scalarValues, indices);
+        float scalar = trilinearInterpolate(scalarValues, 1.0-distToCellCenter[0], 1.0-distToCellCenter[1], 1.0-distToCellCenter[2]);
+
+        // Get the color for that scalar value
+        glm::vec4 srcColor = glm::vec4(0.0);
+        QueryTF(scalar, srcColor);
+
+        // lighting
+        glm::vec3 gradient = glm::vec3(0.0);
+        
+        // compute gradient
+        destColor = colorScalar(gradient, rayDir.xyz(), srcColor, destColor);
 	}
-
-	//colorScalar
 }
 
 
@@ -41,15 +114,14 @@ void rayCasting::getVolumePosition(int index[3], float offset[3], glm::vec4 pos)
 	diff.y = pos.y - meshStartingPt.y;
 	diff.z = pos.z - meshStartingPt.z;
 
-	index[0] = round(diff.x/cellDimensions.x);
-	index[1] = round(diff.x/cellDimensions.y);
-	index[2] = round(diff.x/cellDimensions.z);
+	index[0] = rnd(diff.x/cellDimensions.x);
+	index[1] = rnd(diff.x/cellDimensions.y);
+	index[2] = rnd(diff.x/cellDimensions.z);
 
 	offset[0] = pos.x - index[0]*cellDimensions.x;
 	offset[1] = pos.y - index[1]*cellDimensions.y;
 	offset[2] = pos.z - index[2]*cellDimensions.z;
 }
-
 
 
 glm::vec4 rayCasting::getRay(int x, int y){
@@ -70,15 +142,6 @@ glm::vec4 rayCasting::getRay(int x, int y){
 	return glm::normalize(worldPos - eye);
 }
 
-
-
-// A ray-(axis aligned)box intersection -  to find if we intersect the data
-// 		Find the x,y,z coordinates of that intersection
-//		Figure out where does that x,y,z map to in the gridMesh -  gives us the cell data 
-//			how? we know the starting point and the size of each cell
-// should return wherther or not there is an intersection
-// + x,y,z into the cell of the intersection
-// + cell index of the intersection
 
 bool rayCasting::intersect(glm::vec4 &rayDir, float &prev_tmin, float &prev_tmax){
 
@@ -150,16 +213,9 @@ bool rayCasting::intersect(glm::vec4 &rayDir, float &prev_tmin, float &prev_tmax
 
 
 
-
-
-glm::vec4 rayCasting::colorScalar(glm::vec3 gradient, glm::vec3 dir, float scalar){
-	glm::vec4 srcColor;
-
-	// query from tf function
-	//srcColor = 
-
+glm::vec4 rayCasting::colorScalar(glm::vec3 gradient, glm::vec3 dir, glm::vec4 srcColor, glm::vec4 destColor){
 	if (lighting == true){
-		float normal_dot_light = glm::dot(gradient,dir);
+		float normal_dot_light = glm::dot(gradient,-dir);
 		normal_dot_light = std::max(0.0f, std::min((float)fabs(normal_dot_light),1.0f) );
 
 		// Opacity correction
@@ -174,14 +230,16 @@ glm::vec4 rayCasting::colorScalar(glm::vec3 gradient, glm::vec3 dir, float scala
 				  			 srcColor.a);
 	}
 
-	return srcColor;
+    // Compositing
+    srcColor = glm::clamp(srcColor, 0.f, 1.f);
+    destColor = srcColor * (1.0 - destColor.a) + destColor;
+
+	return destColor;
 }
 
 
 
-void
-rayCasting::setTransferFn(glm::vec4 inputArray[tableEntries], int te, double attenuation, float over)
-{
+void rayCasting::setTransferFn(glm::vec4 inputArray[tableEntries], int te, double attenuation, float over){
     minTFIndex = maxTFIndex = -1;
 
     if (attenuation < -1. || attenuation > 1.)
@@ -286,7 +344,13 @@ float rayCasting::trilinearInterpolate(float vals[8], float distRight, float dis
     return val;
 }
 
-void rayCasting::assignEight(float vals[8], int *index, float *scalarData){
+
+void rayCasting::assignEight(float vals[8], int index[8]){
     for (int i=0 ; i<8 ; i++)
         vals[i] = scalarData[index[i]];
+}
+
+
+int rayCasting::computeIndex(int dims[3], int index_x, int index_y, int index_z){
+    return (index_z*(dims[0]-1)*(dims[1]-1) + index_y*(dims[0]-1) + index_x);
 }
