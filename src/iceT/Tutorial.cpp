@@ -48,6 +48,12 @@ IceTDrawCallbackType original_callback = &Draw;
 
 float *buffer;
 
+float clamp(float color){
+	if(color > 255) color = 255;
+
+	return color;
+}
+
 void createPpm(float array[], int dimx, int dimy, std::string filename){
     int i, j;
     std::cout << "createPpm2  dims: " << dimx << ", " << dimy << " -  " << filename.c_str() << std::endl;
@@ -58,9 +64,9 @@ void createPpm(float array[], int dimx, int dimy, std::string filename){
         	//std::cout << array[j*(dimx*4) + i*4 + 3] << "   ";
             static unsigned char color[3];
             float alpha = array[j*(dimx*4) + i*4 + 3];
-            color[0] = array[j*(dimx*4) + i*4 + 0] * alpha * 255;  // red
-            color[1] = array[j*(dimx*4) + i*4 + 1] * alpha * 255;  // green
-            color[2] = array[j*(dimx*4) + i*4 + 2] * alpha * 255;  // blue 
+            color[0] = clamp(array[j*(dimx*4) + i*4 + 0] * alpha * 255);  // red
+            color[1] = clamp(array[j*(dimx*4) + i*4 + 1] * alpha * 255);  // green
+            color[2] = clamp(array[j*(dimx*4) + i*4 + 2] * alpha * 255);  // blue 
             (void) fwrite(color, 1, 3, fp);
         }
     }
@@ -146,21 +152,21 @@ static void InitData(int rank)
 	        	buffer[index++] = 1.0;
 	            buffer[index++] = 0.0;
 	            buffer[index++] = 0;
-	            buffer[index] = 0.9;
+	            buffer[index] = 1.0;
 	        }
 
 	        else if( rank%3 == 1){
 	        	buffer[index++] = 0;
 	            buffer[index++] = 1.0;
 	            buffer[index++] = 0.0;
-	            buffer[index] = 0.9;
+	            buffer[index] = 1.0;
 	        }
 
 	         else{
 	        	buffer[index++] = 0.5;
 	            buffer[index++] = 0;
 	            buffer[index++] = 0.5;
-	            buffer[index] = 0.5;
+	            buffer[index] = 1.0;
 	        }
 	    }
 	}
