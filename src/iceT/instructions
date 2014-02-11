@@ -1,0 +1,21 @@
+To Build IceT
+
+1. unzip file:
+   tar -xzvf IceT-2-1-1.tar.gz.tar.gz
+
+2. cd IceT-2-1-1
+
+3. ccmake .
+	configure
+	configure again
+	generate
+
+4. make
+
+5. cd ..
+
+6. cmake -DCMAKE_PREFIX_PATH=path_to_folder/IceT-2-1-1/lib
+
+7. make
+
+
