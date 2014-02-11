@@ -10,24 +10,14 @@
 ** techniques described in the Tutorial chapter of the IceT User’s Guide.
 *****************************************************************************/
 #include <stdlib.h>
-/* IceT does not come with the facilities to create windows/OpenGL contexts.
-* we will use glut for that. */
-#ifndef __APPLE__
-#include <GL/glut.h>
-#include <GL/gl.h>
-#else
-#include <GLUT/glut.h>
-#include <OpenGL/gl.h>
-#endif
+
 #include <IceT.h>
-#include <IceTGL.h>
 #include <IceTMPI.h>
- #include <string>
- #include <sstream>
 #include <IceTDevImage.h>
 
+#include <string>
+#include <sstream>
 #include <sys/stat.h>
-
 #include <stdio.h>  /* defines FILENAME_MAX */
 #ifdef WINDOWS
     #include <direct.h>
@@ -37,10 +27,9 @@
     #define GetCurrentDir getcwd
  #endif
 
-#define NUM_TILES_X 2
-#define NUM_TILES_Y 2
 #define TILE_WIDTH 1000
 #define TILE_HEIGHT 1000
+
 static void InitIceT();
 static void DoFrame();
 static void Draw(const IceTDouble * projection_matrix,
