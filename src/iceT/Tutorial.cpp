@@ -24,6 +24,18 @@
 #include <IceTMPI.h>
  #include <string>
  #include <sstream>
+#include <IceTDevImage.h>
+
+#include <sys/stat.h>
+
+#include <stdio.h>  /* defines FILENAME_MAX */
+#ifdef WINDOWS
+    #include <direct.h>
+    #define GetCurrentDir _getcwd
+#else
+    #include <unistd.h>
+    #define GetCurrentDir getcwd
+ #endif
 
 #define NUM_TILES_X 2
 #define NUM_TILES_Y 2
@@ -78,10 +90,30 @@ std::string NumbToString(int Number)
     return ss.str();
 }
 
+std::string getCurrentPath(){
+
+	char cCurrentPath[FILENAME_MAX];
+
+        if (!GetCurrentDir(cCurrentPath, sizeof(cCurrentPath)))
+	    {
+	      std::cout << "ERROR!" << std :: endl;
+	      return "";
+	    } else{
+
+			cCurrentPath[sizeof(cCurrentPath) - 1] = '\0'; /* not really required */
+			printf ("The current working directory is %s", cCurrentPath);
+			return cCurrentPath;
+		}
+
+}
+
 int main(int argc, char **argv)
 {
 	int rank, numProc;
 	IceTCommunicator icetComm;
+
+	mkdir("debug", S_IRWXU|S_IRGRP|S_IXGRP);
+
 	/* Setup MPI. */
 	MPI_Init(&argc, &argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -96,7 +128,7 @@ int main(int argc, char **argv)
 	return 0;
 }
 
-static void InitInput()
+static void InitMatrices()
 {
 	for(int i = 0; i < 16; i++){
 		if(i%5 == 0) {
@@ -121,17 +153,24 @@ static void InitData(int rank)
 
 	    	int index = y * TILE_WIDTH + x * 4;
 
-	        if( rank%2 == 0){
+	        if( rank%3 == 0){
 	        	buffer[index++] = 1.0;
+	            buffer[index++] = 0.0;
 	            buffer[index++] = 0;
-	            buffer[index++] = 0;
-	            buffer[index] = 0.5;
+	            buffer[index] = 0.9;
 	        }
 
-	        else{
+	        else if( rank%3 == 1){
 	        	buffer[index++] = 0;
 	            buffer[index++] = 1.0;
+	            buffer[index++] = 0.0;
+	            buffer[index] = 0.9;
+	        }
+
+	         else{
+	        	buffer[index++] = 0.5;
 	            buffer[index++] = 0;
+	            buffer[index++] = 0.5;
 	            buffer[index] = 0.5;
 	        }
 	    }
@@ -148,18 +187,16 @@ static void InitIceT()
 	std::cout <<  rank << "		~ InitIceT()" << std::endl;
 
 	// Inititialize 
-	InitInput();
+	InitMatrices();
 
 	float start, end;
 
 	int div_width = TILE_WIDTH / num_proc;
 
-	start = map(rank*div_width + div_width / 3, 0, TILE_WIDTH, -1, 1);
-	end = map((rank+1)*div_width + div_width / 2, 0, TILE_WIDTH, -1, 1);
+	start = map(rank*div_width, 0, TILE_WIDTH, -1, 1);
+	end = map((rank+1)*div_width + 2 * div_width / 3, 0, TILE_WIDTH, -1, 1);
 
 	icetBoundingBoxf(start, end, start, end, -0.5, 0.5);
-
-	icetEnable(ICET_CORRECT_COLORED_BACKGROUND);
 
 	// /////////////////////////
 	icetCompositeMode( ICET_COMPOSITE_MODE_BLEND );
@@ -180,10 +217,8 @@ static void InitIceT()
 	icetResetTiles();
 	icetAddTile(0, 0, TILE_WIDTH, TILE_HEIGHT, 0);
 
-	//icetPhysicalRenderSize(TILE_WIDTH, TILE_HEIGHT);
+	icetPhysicalRenderSize(TILE_WIDTH, TILE_HEIGHT);
 	icetStrategy(ICET_STRATEGY_REDUCE);
-
-
 
 	// Run the RayCaster
 	// ExecuteRayCaster() blah blah
@@ -195,9 +230,8 @@ static void InitIceT()
 
 	// Now call the DoFrame() function
 	DoFrame();
-
-
 }
+
 static void DoFrame()
 {
 	IceTInt rank, num_proc;
@@ -214,9 +248,6 @@ static void DoFrame()
 									   modelview_matrix,
 									   backgroundcolor );
 
-	std::cout <<  rank << "		~ before entering the if loop" << std::endl;
-
-
 	if (icetImageGetColorFormat(result) == ICET_IMAGE_COLOR_RGBA_FLOAT) {
 		int image_width, image_height, num_pixels;
 
@@ -231,19 +262,11 @@ static void DoFrame()
 
         std::cout <<  rank << "		~Like writing right here" <<std::endl;
 
-        createPpm(data, image_width, image_height, "/home/sci/mprasad/research/iceT/icet_" + NumbToString(rank) + ".ppm");
+        createPpm(data, image_width, image_height, getCurrentPath() + "/debug/icet_" + NumbToString(rank) + ".ppm");
         std::cout <<  rank << "		~After writing final" <<std::endl;
     }
 
-    std::cout <<  rank << "		~ destroying" << std::endl;
-
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    //IceTContext c = icetGetContext();
-    //icetSetContext(icetContext);
-    //if(c != NULL)
     icetDestroyContext(icetContext);
-
     std::cout <<  rank << "		~ after destroying" << std::endl;
 
 
@@ -262,8 +285,6 @@ static void Draw(	const IceTDouble * projection_matrix,
 
 	
 	IceTInt rank, num_proc;
-	/* We could get these directly from MPI, but it’s just as easy to get them
-	* from IceT. */
 	icetGetIntegerv(ICET_RANK, &rank);
 	icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
 
@@ -273,8 +294,9 @@ static void Draw(	const IceTDouble * projection_matrix,
 	icetGetIntegerv(ICET_PHYSICAL_RENDER_WIDTH, &image_width);
 	icetGetIntegerv(ICET_PHYSICAL_RENDER_HEIGHT, &image_height);
 
-	// write into the file
+	icetClearImage(result);
 
+	// write into the file
 	int block_width = image_width / num_proc;
 
     if (icetImageGetColorFormat(result) == ICET_IMAGE_COLOR_RGBA_FLOAT) {
@@ -298,7 +320,7 @@ static void Draw(	const IceTDouble * projection_matrix,
         // std::cout << "Before copying" <<std::endl;
         // icetImageCopyColorf ( result, data, ICET_IMAGE_COLOR_RGBA_FLOAT);
 
-        createPpm(data, image_width, image_height, "/home/sci/mprasad/research/iceT/icet_sub_" + NumbToString(rank) + ".ppm");
+        createPpm(data, image_width, image_height, getCurrentPath() + "/debug/icet_sub_" + NumbToString(rank) + ".ppm");
 
         std::cout <<  rank << "		~ After writing" <<std::endl;
     } else {
