@@ -88,6 +88,10 @@ public:
 	~rayCasting();
 };
 
+int round(float x){
+	return ((int)x+0.5);
+}
+
 #endif
 
 

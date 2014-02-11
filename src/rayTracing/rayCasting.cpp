@@ -13,8 +13,44 @@ rayCasting::~rayCasting(){
 void rayCasting::castRay(int x, int y){
 	glm::vec4 rayDir = getRay(x,y);
 	
+	float tmin, tmax;
+	if (intersect(rayDir,tmin, tmax) == true){
+		glm::vec4 pos = eye + tmin*rayDir;
+
+		int index[3];
+		float offset[3];
+		getVolumePosition(index,offset, pos);
+
+		int indices[8];
+		if (pos < 0.5){
+			indices[0] = indices[0]
+		}
+
+	}
+
 	//colorScalar
 }
+
+
+//
+// pos - from left, from bottom, from front
+void rayCasting::getVolumePosition(int index[3], float offset[3], glm::vec4 pos){
+	glm::vec4 diff;
+
+	diff.x = pos.x - meshStartingPt.x;
+	diff.y = pos.y - meshStartingPt.y;
+	diff.z = pos.z - meshStartingPt.z;
+
+	index[0] = round(diff.x/cellDimensions.x);
+	index[1] = round(diff.x/cellDimensions.y);
+	index[2] = round(diff.x/cellDimensions.z);
+
+	offset[0] = pos.x - index[0]*cellDimensions.x;
+	offset[1] = pos.y - index[1]*cellDimensions.y;
+	offset[2] = pos.z - index[2]*cellDimensions.z;
+}
+
+
 
 glm::vec4 rayCasting::getRay(int x, int y){
 	//
