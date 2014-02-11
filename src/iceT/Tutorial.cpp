@@ -12,17 +12,23 @@
 #include <stdlib.h>
 /* IceT does not come with the facilities to create windows/OpenGL contexts.
 * we will use glut for that. */
+#ifndef __APPLE__
+#include <GL/glut.h>
+#include <GL/gl.h>
+#else
+#include <GLUT/glut.h>
+#include <OpenGL/gl.h>
+#endif
 #include <IceT.h>
+#include <IceTGL.h>
 #include <IceTMPI.h>
-#include <IceTDevState.h>
-#include <IceTDevImage.h>
  #include <string>
  #include <sstream>
 
 #define NUM_TILES_X 2
 #define NUM_TILES_Y 2
-#define TILE_WIDTH 300
-#define TILE_HEIGHT 300
+#define TILE_WIDTH 1000
+#define TILE_HEIGHT 1000
 static void InitIceT();
 static void DoFrame();
 static void Draw(const IceTDouble * projection_matrix,
@@ -38,6 +44,9 @@ IceTFloat backgroundcolor[4];
 
 IceTDrawCallbackType original_callback = &Draw;
 
+
+float *buffer;
+
 void createPpm(float array[], int dimx, int dimy, std::string filename){
     int i, j;
     std::cout << "createPpm2  dims: " << dimx << ", " << dimy << " -  " << filename.c_str() << std::endl;
@@ -45,7 +54,7 @@ void createPpm(float array[], int dimx, int dimy, std::string filename){
     (void) fprintf(fp, "P6\n%d %d\n255\n", dimx, dimy);
     for (j = 0; j < dimy; ++j){
         for (i = 0; i < dimx; ++i){
-        	std::cout << array[j*(dimx*4) + i*4 + 3] << "   ";
+        	//std::cout << array[j*(dimx*4) + i*4 + 3] << "   ";
             static unsigned char color[3];
             float alpha = array[j*(dimx*4) + i*4 + 3];
             color[0] = array[j*(dimx*4) + i*4 + 0] * alpha * 255;  // red
@@ -78,9 +87,6 @@ int main(int argc, char **argv)
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &numProc);
 
-
-	std::cout << "before getting image_width" << std::endl;
-
 	icetComm = icetCreateMPICommunicator(MPI_COMM_WORLD);
 	icetContext = icetCreateContext(icetComm);
 	icetDestroyMPICommunicator(icetComm);
@@ -90,18 +96,8 @@ int main(int argc, char **argv)
 	return 0;
 }
 
-static void InitIceT()
+static void InitInput()
 {
-	
-	IceTInt rank, num_proc;
-	/* We could get these directly from MPI, but it’s just as easy to get them
-	* from IceT. */
-	icetGetIntegerv(ICET_RANK, &rank);
-	icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
-
-	std::cout <<  rank << "		~ InitIceT()" << std::endl;
-
-	float x = rank;
 	for(int i = 0; i < 16; i++){
 		if(i%5 == 0) {
 			modelview_matrix[i] = 1.0;
@@ -110,30 +106,62 @@ static void InitIceT()
 			modelview_matrix[i] = 0.0;
 			projection_matrix[i] = 0.0;
 		}
-
 	}
 	backgroundcolor[0] = 0.0f;
 	backgroundcolor[1] = 0.0f;
 	backgroundcolor[2] = 0.0f;
 	backgroundcolor[3] = 0.0f;
 
-	float start, end;
-	
-	if( rank == 0 ){
-		start = map(50, 0, TILE_WIDTH, -1, 1);
-		end = map(170, 0, TILE_WIDTH, -1, 1);
-	}
+}
 
-	if( rank == 1 ){
-		start = map(130, 0, TILE_WIDTH, -1, 1);
-		end = map(250, 0, TILE_WIDTH, -1, 1);
+static void InitData(int rank)
+{
+	for (int y = 0; y < TILE_HEIGHT; y++) {
+	    for (int x = 0; x < TILE_WIDTH; x++) {
+
+	    	int index = y * TILE_WIDTH + x * 4;
+
+	        if( rank%2 == 0){
+	        	buffer[index++] = 1.0;
+	            buffer[index++] = 0;
+	            buffer[index++] = 0;
+	            buffer[index] = 0.5;
+	        }
+
+	        else{
+	        	buffer[index++] = 0;
+	            buffer[index++] = 1.0;
+	            buffer[index++] = 0;
+	            buffer[index] = 0.5;
+	        }
+	    }
 	}
+}
+
+static void InitIceT()
+{
+	
+	IceTInt rank, num_proc;
+	icetGetIntegerv(ICET_RANK, &rank);
+	icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
+
+	std::cout <<  rank << "		~ InitIceT()" << std::endl;
+
+	// Inititialize 
+	InitInput();
+
+	float start, end;
+
+	int div_width = TILE_WIDTH / num_proc;
+
+	start = map(rank*div_width + div_width / 3, 0, TILE_WIDTH, -1, 1);
+	end = map((rank+1)*div_width + div_width / 2, 0, TILE_WIDTH, -1, 1);
 
 	icetBoundingBoxf(start, end, start, end, -0.5, 0.5);
 
 	icetEnable(ICET_CORRECT_COLORED_BACKGROUND);
 
-	/////////////////////////
+	// /////////////////////////
 	icetCompositeMode( ICET_COMPOSITE_MODE_BLEND );
 	icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_FLOAT); // from 0- 1, or ICET_IMAGE_COLOR_RGBA_UBYTE from 0 to 255
 	icetSetDepthFormat(ICET_IMAGE_DEPTH_NONE);
@@ -141,28 +169,37 @@ static void InitIceT()
 	icetEnable(ICET_ORDERED_COMPOSITE);
 
 
-	IceTInt *procs = new IceTInt(num_proc);
+	IceTInt *procs = new IceTInt[num_proc];
 	for(int i=0; i<num_proc; i++)
 		procs[i] = num_proc - 1 - i;
 	icetCompositeOrder(procs);
 
-	//Be aware that not all strategies support ordered compositing !!!!
-	//////////////////////////
+	// //Be aware that not all strategies support ordered compositing !!!!
+	// //////////////////////////
 
 	icetResetTiles();
 	icetAddTile(0, 0, TILE_WIDTH, TILE_HEIGHT, 0);
 
-	icetPhysicalRenderSize(TILE_WIDTH, TILE_HEIGHT);
-
-	/* Tell IceT what strategy to use. The REDUCE strategy is an all-around
-	* good performer. */
+	//icetPhysicalRenderSize(TILE_WIDTH, TILE_HEIGHT);
 	icetStrategy(ICET_STRATEGY_REDUCE);
-	DoFrame();
-}
 
+
+
+	// Run the RayCaster
+	// ExecuteRayCaster() blah blah
+
+	buffer = new float[TILE_WIDTH * TILE_HEIGHT * 4]; // Populate buffer with data from the ray caster
+
+	InitData(rank); // remove this after running ray caster
+
+
+	// Now call the DoFrame() function
+	DoFrame();
+
+
+}
 static void DoFrame()
 {
-
 	IceTInt rank, num_proc;
 	/* We could get these directly from MPI, but it’s just as easy to get them
 	* from IceT. */
@@ -176,6 +213,8 @@ static void DoFrame()
 	IceTImage result =  icetDrawFrame( projection_matrix,
 									   modelview_matrix,
 									   backgroundcolor );
+
+	std::cout <<  rank << "		~ before entering the if loop" << std::endl;
 
 
 	if (icetImageGetColorFormat(result) == ICET_IMAGE_COLOR_RGBA_FLOAT) {
@@ -192,19 +231,27 @@ static void DoFrame()
 
         std::cout <<  rank << "		~Like writing right here" <<std::endl;
 
-        createPpm(data, image_width, image_height, "/home/pbmanasa/Desktop/debug/icet_" + NumbToString(rank) + ".ppm");
+        createPpm(data, image_width, image_height, "/home/sci/mprasad/research/iceT/icet_" + NumbToString(rank) + ".ppm");
         std::cout <<  rank << "		~After writing final" <<std::endl;
     }
 
     std::cout <<  rank << "		~ destroying" << std::endl;
 
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    //IceTContext c = icetGetContext();
+    //icetSetContext(icetContext);
+    //if(c != NULL)
     icetDestroyContext(icetContext);
+
+    std::cout <<  rank << "		~ after destroying" << std::endl;
+
+
 	//glutDestroyWindow(winId);
 	MPI_Finalize();
 	exit(0);
 
 }
-
 
 
 static void Draw(	const IceTDouble * projection_matrix,
@@ -226,25 +273,7 @@ static void Draw(	const IceTDouble * projection_matrix,
 	icetGetIntegerv(ICET_PHYSICAL_RENDER_WIDTH, &image_width);
 	icetGetIntegerv(ICET_PHYSICAL_RENDER_HEIGHT, &image_height);
 
-	//IceTImage image = icetImageNull();
-
-	// Initialize Image === page 82
-	// IceTImage image = icetGetStateBufferImage(ICET_STRATEGY_BUFFER_0, image_width, image_height);
-
-	// icetImageSetDimensions(image, image_width, image_height);
-	// icetClearImage(image);
-
-	/* Alternatively, you could get the width and height from the image passed */
-	/* to the callback like this. */
-	/* image_width = icetImageGetWidth(result); */
-	/* image_height = icetImageGetHeight(result); */
-	//num_pixels = icetImageGetNumPixels (image);
-	//IceTUInt* pixel = icetImageGetColorui(image);
-
-	// for (int i = 0; i < num_pixels; ++i) // *3 ???
-	// {
-	// 	pixel[i] = 50;
-	// }
+	// write into the file
 
 	int block_width = image_width / num_proc;
 
@@ -254,34 +283,12 @@ static void Draw(	const IceTDouble * projection_matrix,
         IceTFloat *data = icetImageGetColorf(result);
         for (int y = 0; y < image_height; y++) {
             for (int x = 0; x < image_width; x++) {
-                // if ((image_height-y) < x) {
-                //     data[0] = (float)x;
-                //     data[1] = (float)y;
-                //     data[2] = 0.0;
-                //     data[3] = 1.0;
-                // } 
-             	//    if(x >= block_width * rank && x < block_width * (rank + 1) ){
-	            //     data[0] = (float)x;
-	            //     data[1] = (float)x;
-	            //     data[2] = 0.0;
-	            //     data[3] = 0.5;
-            	// }
 
-            	data[0] = data[1] = data[2] = data[3] = 0.0;
-
-	            if( rank == 0 /*&& x >= 50 && x < 170 && y >= 50 && y < 170*/){
-	            	data[0] = 1.0;
-	                data[1] = 0;
-	                data[2] = 0;
-	                data[3] = 0.5;
-	            }
-
-	            if( rank == 1 /*&& x > 130 && x <= 250 && y > 130 && y < 250*/){
-	            	data[0] = 0;
-	                data[1] = 1.0;
-	                data[2] = 0;
-	                data[3] = 0.5;
-	            }
+        		int index = y * image_width + x * 4;
+            	data[0] = buffer[index++];
+                data[1] = buffer[index++];
+                data[2] = buffer[index++];
+                data[3] = buffer[index];
 
                 data += 4;
             }
@@ -291,7 +298,7 @@ static void Draw(	const IceTDouble * projection_matrix,
         // std::cout << "Before copying" <<std::endl;
         // icetImageCopyColorf ( result, data, ICET_IMAGE_COLOR_RGBA_FLOAT);
 
-        createPpm(data, image_width, image_height, "/home/pbmanasa/Desktop/debug/icet_sub_" + NumbToString(rank) + ".ppm");
+        createPpm(data, image_width, image_height, "/home/sci/mprasad/research/iceT/icet_sub_" + NumbToString(rank) + ".ppm");
 
         std::cout <<  rank << "		~ After writing" <<std::endl;
     } else {
